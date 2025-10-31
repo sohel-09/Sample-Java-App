@@ -1,0 +1,71 @@
+pipeline {
+    agent any
+
+    triggers {
+        githubPush()
+    }
+
+    parameters {
+        string(name: 'PROJECT_ID', defaultValue: 'fluted-factor-438905-d2', description: 'GCP Project ID')
+        string(name: 'REPO_NAME', defaultValue: ' java-sample-repo', description: 'Artifact Registry Repo Name')
+        string(name: 'REPO_LOCATION', defaultValue: 'us-central1', description: 'Artifact Registry Location')
+    }
+
+    environment {
+        GCP_CREDENTIALS = credentials('gcp-service-account')
+        IMAGE_NAME = "javaapplication"
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        PROJECT_ID = "${params.PROJECT_ID}"
+        REPO_NAME = "${params.REPO_NAME}"
+        REPO_LOCATION = "${params.REPO_LOCATION}" 
+        ARTIFACT_REGISTRY_HOST = "${REPO_LOCATION}-docker.pkg.dev"
+        FULL_IMAGE_NAME = "${ARTIFACT_REGISTRY_HOST}/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:V${IMAGE_TAG}"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/sohel-09/Sample-Java-App.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $IMAGE_NAME:V$IMAGE_TAG .'
+            }
+        }
+
+        stage('Authenticate with Artifact Registry') {
+            steps {
+                echo "🔐 Authenticating with Google Artifact Registry..."
+                withCredentials([file(credentialsId: 'GCP_SERVICE_ACCOUNT_KEY', variable: 'GCP_KEY_FILE')]) {
+                    sh "cat \$GCP_KEY_FILE | docker login -u _json_key --password-stdin https://${ARTIFACT_REGISTRY_HOST}"
+                echo "Login Successful ☑️"
+                }
+            }
+        }
+      
+        stage('Tag and Push Image') {
+            steps {
+                echo "📦 Tagging image as ${FULL_IMAGE_NAME}"
+                sh "docker tag ${IMAGE_NAME}:V${IMAGE_TAG} ${FULL_IMAGE_NAME}"
+                echo "🚀 Pushing image to Artifact Registry..."
+                sh "docker push ${FULL_IMAGE_NAME}"
+            }
+        }
+}
+      
+    post {
+        success {
+            // echo "✅ CI pipeline successful — triggering CD pipeline..."
+            // Trigger CD pipeline automatically
+            // build job: 'java-app-cd', wait: false, propagate: false
+            echo "✅ CI pipeline completed successfully."
+        }
+        failure {
+            // echo "❌ CI pipeline failed — CD will not run."
+            echo "❌ CI pipeline failed. Check logs for details."
+        }
+    }
+}
