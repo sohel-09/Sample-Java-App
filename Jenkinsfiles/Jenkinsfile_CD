@@ -1,0 +1,60 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'IMAGE_VERSION', defaultValue: 'latest', description: 'Docker image version to deploy')
+    }
+
+    environment {
+        PROJECT_ID = "fluted-factor-438905-d2"
+        REGION = "asia-south1"
+        REPO = "java-sample-repo"
+        IMAGE_NAME = "java-sample-app"
+        GAR_PATH = "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE_NAME}"
+        GCP_KEY_PATH = "C:/Users/LENOVO/Downloads/gcp-key.json"
+        CLUSTER_NAME = "java-sample-cluster"
+        CLUSTER_ZONE = "asia-south1"
+        WORKSPACE_PATH = "${WORKSPACE.replace('\\','/')}"
+        K8S_YAML = "${WORKSPACE_PATH}/k8s/deployment.yaml"
+    }
+
+    stages {
+        stage('Authenticate to GCP') {
+            steps {
+                sh "gcloud auth activate-service-account --key-file=${GCP_KEY_PATH}"
+            }
+        }
+
+        stage('Configure GKE Access') {
+            steps {
+                sh "gcloud container clusters get-credentials ${CLUSTER_NAME} --zone=${CLUSTER_ZONE} --project=${PROJECT_ID}"
+            }
+        }
+
+        stage('Update Deployment & Deploy') {
+            steps {
+                script {
+                    // Replace placeholder with the image version
+                    if (isUnix()) {
+                        sh "sed -i 's|PLACEHOLDER_IMAGE|${GAR_PATH}:${params.IMAGE_VERSION}|' ${K8S_YAML}"
+                    } else {
+                        sh "powershell -Command \"(Get-Content ${K8S_YAML}) -replace 'PLACEHOLDER_IMAGE','${GAR_PATH}:${params.IMAGE_VERSION}' | Set-Content ${K8S_YAML}\""
+                    }
+
+                    // Apply deployment
+                    sh "kubectl apply -f ${K8S_YAML}"
+                    sh "kubectl rollout status deployment/java-sample-app"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Successfully deployed version ${params.IMAGE_VERSION} to GKE!"
+        }
+        failure {
+            echo "❌ CD pipeline failed!"
+        }
+    }
+}
