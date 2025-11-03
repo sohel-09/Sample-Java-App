@@ -1,9 +1,5 @@
-FROM openjdk:17-jdk-slim
-
+FROM openjdk:17
+COPY helloworld.java /app/
 WORKDIR /app
-
-COPY HelloWorld.java /app
-
-RUN javac HelloWorld.java
-
-CMD ["java", "HelloWorld"]
+RUN javac helloworld.java
+CMD ["java", "helloworld"]
