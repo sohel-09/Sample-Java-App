@@ -1,6 +1,6 @@
 public class HelloWorld{
     public static void main(String[] args){
-        System.out.print("I,m Sohel");
+        System.out.println("I,m Sohel");
         
 
     }
