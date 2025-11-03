@@ -12,6 +12,6 @@ WORKDIR /app
 COPY HelloWorld.java .
 RUN javac HelloWorld.java
 
+# Run the app and keep it alive if needed
 CMD ["java", "HelloWorld"]
-
 
