@@ -12,7 +12,7 @@ pipeline {
     }
 
     triggers {
-        githubPush() // triggers on GitHub push
+        githubPush() 
     }
 
     stages {
@@ -45,7 +45,7 @@ pipeline {
     post {
         success {
             echo "✅ Docker image pushed: ${GAR_PATH}:${NEW_VERSION}"
-            // Trigger CD pipeline automatically
+            // Trigger CD pipeline 
             build job: 'Java_CD_Pipeline', parameters: [string(name: 'IMAGE_VERSION', value: "${NEW_VERSION}")]
         }
         failure {
